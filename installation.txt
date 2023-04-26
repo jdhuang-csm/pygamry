@@ -1,0 +1,27 @@
+First, download or clone the repository to your machine.
+
+Anaconda/Conda users:
+Do NOT install with pip (pip and conda don't mix). I would strongly recommend creating a clean conda environment configured to install all packages from the conda-forge channel (see instructions at bottom). Then:
+1. Launch Anaconda Prompt and activate the environment in which you want to install the package.
+2. Install required packages:
+	conda install numpy pandas matplotlib comtypes
+2. Navigate to the top-level pygamry directory that contains the setup.py file.
+3. Run the following command to install the package in development mode:
+	conda develop .
+
+Pip users:
+1. Launch Command Prompt and navigate to the top-level pygamry directory that contains the setup.py file.
+2. Run the following command to install the package:
+pip install .
+
+
+Creating a conda environment configured for conda-forge channel
+1. Create new environment (change <name> to desired environment name):
+	conda create -n <name> -c conda-forge python=3.9
+2. Activate the new environment:
+	conda activate <name>
+3. Add conda-forge channel:
+	conda config --add channels conda-forge
+4. Set channel priority to strict:
+	conda config --set channel_priority strict
+5. Install packages
