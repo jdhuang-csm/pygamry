@@ -74,6 +74,7 @@ def nonuniform_gaussian_filter1d(a, sigma, axis=-1, empty=False,
                                  mode='reflect', cval=0.0, truncate=4, sigma_node_factor=1.5, min_sigma=0.25):
     if np.max(sigma) > 0:
         sigma = np.copy(sigma)
+        sigma[sigma <= 0] = 1e-10
 
         # Get sigma nodes
         min_ls = max(np.min(np.log10(sigma)), np.log10(min_sigma))

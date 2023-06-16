@@ -1017,14 +1017,10 @@ class DtaqPstatic(GamryDtaqEventSink):
         self.pstat.SetIchOffsetEnable(False)
 
         # Find current range
-        # TODO: figure out why this doesn't work
         print('Finding IE range...')
         self.pstat.FindIERange()
 
         print('IE range:', self.pstat.IERange())
-
-        # Disable ranging (?)
-        self.pstat.SetIERangeMode(False)
 
     def set_signal(self, v, duration, t_sample):
         """

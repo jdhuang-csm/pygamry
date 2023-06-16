@@ -15,14 +15,19 @@ from . import polarization as pol
 # Hybrid
 # ====================================
 class HybridSequencer:
-    def __init__(self, mode='galv', update_step_size=True, exp_notes=None):
-        self.mode = mode
+    def __init__(self, chrono_mode='galv', eis_mode='galv', update_step_size=True, exp_notes=None):
+        self.chrono_mode = chrono_mode
+        self.eis_mode = eis_mode
         self.update_step_size = update_step_size
 
+        if eis_mode == 'pot':
+            warnings.warn('If eis_mode is set to pot, EIS parameters must be configured manually '
+                          'by calling configure_eis after configuring the chrono step')
+
         # Initialize dtaqs. Don't turn cell off - handle this within run
-        self.dt_chrono = DtaqChrono(mode, write_mode='once', exp_notes=exp_notes,
+        self.dt_chrono = DtaqChrono(chrono_mode, write_mode='once', exp_notes=exp_notes,
                                     start_with_cell_off=False, leave_cell_on=True)
-        self.dt_eis = DtaqReadZ(mode, write_mode='interval', write_interval=1, exp_notes=exp_notes,
+        self.dt_eis = DtaqReadZ(eis_mode, write_mode='interval', write_interval=1, exp_notes=exp_notes,
                                 start_with_cell_off=False, leave_cell_on=True)  #, readzspeed='ReadZSpeedFast')
 
         self.dstep_args = None
@@ -55,10 +60,10 @@ class HybridSequencer:
     def configure_eis(self, frequencies, dc_amp, ac_amp, z_guess=None):
         # Determine z_guess from s_rms
         if z_guess is None:
-            if self.mode == 'galv':
+            if self.eis_mode == 'galv':
                 # Assume step size is set to obtain v_rms of 10 mV
                 z_guess = 0.01 / ac_amp
-            elif self.mode == 'pot':
+            elif self.eis_mode == 'pot':
                 # Arbitrary guess
                 z_guess = 1
 
@@ -254,7 +259,7 @@ class HybridSequencer:
         if jv_data is not None:
             if type(jv_data) == str:
                 jv_data = read_curve_data(jv_data)
-            elif type(jv_data) != pd.core.frame.DataFrame:
+            elif type(jv_data) != pd.DataFrame:
                 raise ValueError(f'Expected jv_data to be a path or DataFrame; got type {type(jv_data)} instead')
 
         # Check whether ImExpected should be used in place of Im
@@ -368,11 +373,10 @@ class HybridSequencer:
         if self.eis_args is None:
             raise RuntimeError('Measurement must be configured before calling run')
 
-        if self.mode == 'galv':
-            eis_tag = 'EISGALV'
+        eis_tag = f'EIS{self.eis_mode.upper()}'
+        if self.chrono_mode == 'galv':
             chrono_tag = 'CHRONOP'
         else:
-            eis_tag = 'EISPOT'
             chrono_tag = 'CHRONOA'
 
         if decimate and self.dt_chrono.decimate_args is None:
@@ -702,6 +706,9 @@ class HybridSequencer:
                       start_with_cell_off=True, leave_cell_on=False, filter_response=False,
                       show_plot=False):
 
+        if self.eis_mode == 'pot':
+            raise ValueError('Hybrid staircase is not implemented for potentiostatic EIS')
+
         if self.staircase_args is None:
             raise RuntimeError('Measurement must be configured before calling run_staircase')
 
@@ -728,16 +735,13 @@ class HybridSequencer:
         self.staircase_v_hist = None
 
         if run_full_eis_post or run_full_eis_pre:
-            if self.mode == 'galv':
-                eis_tag = 'EISGALV'
-            elif self.mode == 'pot':
-                eis_tag = 'EISPOT'
+            eis_tag = f'EIS{self.eis_mode.upper()}'
 
             if z_guess is None:
-                if self.mode == 'galv':
+                if self.eis_mode == 'galv':
                     # Assume step size is set to obtain v_rms of 10 mV
                     z_guess = 0.01 / abs(s_rms)
-                elif self.mode == 'pot':
+                elif self.eis_mode == 'pot':
                     # Arbitrary guess
                     z_guess = 1
 
@@ -801,7 +805,7 @@ class HybridSequencer:
                     self.staircase_v_hist.append(self.meas_v_end)
 
                 # Determine next step size
-                if self.mode == 'galv' and self.update_step_size:
+                if self.chrono_mode == 'galv' and self.update_step_size:
                     # Determine desired v_rms
                     if v_rms_target is None:
                         v_rms_target = (self.meas_v_max - self.meas_v_min) / (2 * np.sqrt(2))
