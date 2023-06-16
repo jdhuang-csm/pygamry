@@ -94,7 +94,7 @@ def get_decimation_index(times, step_times, t_sample, prestep_points, decimation
 
             if len(keep_index) == 0:
                 # sample_interval too large - runs past end of step. Keep last sample
-                keep_index = [interval_end_index]
+                keep_index = [interval_end_index - 1]
 
             # If this is the final interval, ensure that last point before next step is included
             if interval_end_index == next_step_index and keep_index[-1] < next_step_index - 1:
