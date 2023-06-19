@@ -121,6 +121,7 @@ hybrid_args = {
     '--hybrid_eis_max_freq': dict(type=float, default=1e6),
     '--hybrid_eis_min_freq': dict(type=float, default=1e3),
     '--hybrid_eis_ppd': dict(type=int, default=10),
+    '--hybrid_eis_mode': dict(type=str, default='galv'),
     '--hybrid_rest_time': dict(type=float, default=0.0),
     '--hybrid_Z_guess': dict(type=float, default=1),
 }

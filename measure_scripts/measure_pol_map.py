@@ -1,6 +1,6 @@
 import argparse
 # import os
-# import numpy as np
+import numpy as np
 # import matplotlib.pyplot as plt
 import time
 # from copy import deepcopy
@@ -56,7 +56,8 @@ if __name__ == '__main__':
     chrono = DtaqChrono(mode='pot', write_mode='once', write_precision=6, exp_notes=args.exp_notes)
 
     # Configure hybrid sequencer
-    seq = HybridSequencer(mode='galv', update_step_size=not args.staircase_constant_step_size,
+    seq = HybridSequencer(chrono_mode='galv', eis_mode='galv',
+                          update_step_size=not args.staircase_constant_step_size,
                           exp_notes=args.exp_notes)
 
     for n in range(args.num_loops):
@@ -82,6 +83,25 @@ if __name__ == '__main__':
             iv_df = rf.run_v_sweep(chrono, pstat, args, suffix, V_oc=V_oc)
         else:
             iv_df = None
+
+        # TODO: figure out a better solution for this
+        #  TEMP: in case that long-timescale transport losses cause vsweep current to decrease with increasing voltage
+        #  Adjust the IV input to the hybrid sequencer to ensure that current increases monotonically
+        #  with increasing voltage
+        # Sort by voltage
+        iv_df = iv_df.copy()
+        sort_index = np.argsort(iv_df['Vf'].values)
+        i_sort = iv_df['Im'].values[sort_index]
+        v_sort = iv_df['Vf'].values[sort_index]
+        # Enforce a minimum current step
+        i_diff = np.diff(i_sort)
+        min_i_step = 0.001
+        i_diff[i_diff < min_i_step] = min_i_step
+        cumsum = np.cumsum(i_diff)
+        cumsum = np.insert(cumsum, 0, 0)
+        i_sort = i_sort[0] + cumsum
+        iv_df['Im'] = i_sort
+        iv_df['Vf'] = v_sort
 
         # Run hybrid staircase
         # -----------------------

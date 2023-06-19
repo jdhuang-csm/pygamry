@@ -20,7 +20,8 @@ if __name__ == '__main__':
     pstat = get_pstat()
 
     # Configure sequencer
-    seq = HybridSequencer(mode='galv', update_step_size=True, exp_notes=args.exp_notes)
+    seq = HybridSequencer(chrono_mode='galv', eis_mode=args.hybrid_eis_mode,
+                          update_step_size=True, exp_notes=args.exp_notes)
 
     for n in range(args.num_loops):
         print(f'Beginning cycle {n}\n-----------------------------')

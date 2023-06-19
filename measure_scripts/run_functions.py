@@ -416,16 +416,22 @@ def find_current(pstat, vdc, duration, num_points=3):
 def run_hybrid(sequencer, pstat, args, file_suffix, show_plot=False, **kw):
     print('Running HYBRID')
 
-    if sequencer.mode != 'galv':
-        raise ValueError("run_hybrid expects a sequencer with mode = 'galv';"
-                         f" received sequencer with mode {sequencer.mode}")
+    if sequencer.chrono_mode != 'galv':
+        raise ValueError("run_hybrid expects a sequencer with chrono_mode = 'galv';"
+                         f" received sequencer with mode {sequencer.chrono_mode}")
+
+    if args.hybrid_eis_mode == 'pot':
+        if args.hybrid_i_init != 0:
+            raise ValueError('Potentiostatic EIS can only be used for hybrid measurements centered at open circuit')
 
     # Determine current signal amplitude to obtain desired voltage
+    v_oc = None
     if args.hybrid_v_rms is not None and not args.hybrid_disable_find_i:
         # Test resistance
         v_oc = test_ocv(pstat)
         print('v_rms:', args.hybrid_v_rms)
         i_rms = find_current(pstat, v_oc + args.hybrid_v_rms, 2.0)
+        z_guess = abs(args.hybrid_v_rms / i_rms)
         time.sleep(1)  # rest
         # if r_est is None:
         #     r_est = test_resistance(pstat, t_step=2.5)
@@ -433,6 +439,7 @@ def run_hybrid(sequencer, pstat, args, file_suffix, show_plot=False, **kw):
     else:
         # r_est = None
         i_rms = args.hybrid_i_rms
+        z_guess = None
 
     print('i_rms: {:.2g} A'.format(i_rms))
 
@@ -449,13 +456,14 @@ def run_hybrid(sequencer, pstat, args, file_suffix, show_plot=False, **kw):
     step_types = ['triple', 'geo']
     if args.hybrid_step_type == 'triple':
         sequencer.configure_triple_step(args.hybrid_i_init, i_rms, args.hybrid_t_init,
-                                        args.hybrid_t_step, args.hybrid_t_sample, eis_freq)
+                                        args.hybrid_t_step, args.hybrid_t_sample, eis_freq, z_guess=z_guess)
     elif args.hybrid_step_type == 'geo':
         sequencer.configure_geo_step(args.hybrid_i_init, i_rms, args.hybrid_t_init, args.hybrid_geo_t_short,
                                      args.hybrid_t_step, args.hybrid_t_sample,
                                      args.hybrid_geo_num_scales, args.hybrid_geo_steps_per_scale,
                                      eis_freq,
-                                     end_at_init=args.hybrid_geo_end_at_init, end_time=args.hybrid_geo_end_time)
+                                     end_at_init=args.hybrid_geo_end_at_init, end_time=args.hybrid_geo_end_time,
+                                     z_guess=z_guess)
         # s_init, s_rms, t_init, t_short, t_long, t_sample, num_scales, steps_per_scale,
         # frequencies
     else:
@@ -464,6 +472,11 @@ def run_hybrid(sequencer, pstat, args, file_suffix, show_plot=False, **kw):
     #     getattr(sequencer, f'configure_{args.hybrid_step_type}_step')(args.hybrid_i_init, i_rms, args.hybrid_t_init,
     #                                                                   args.hybrid_t_step, args.hybrid_t_sample,
     #                                                                   eis_freq)
+
+    if args.hybrid_eis_mode == 'pot':
+        if v_oc is None:
+            v_oc = test_ocv(pstat)
+        sequencer.configure_eis(eis_freq, dc_amp=v_oc, ac_amp=abs(args.hybrid_v_rms), z_guess=z_guess)
 
     sequencer.run(pstat, decimate=decimate, data_path=args.data_path, kst_path=args.kst_path,
                   file_suffix=file_suffix, rest_time=args.hybrid_rest_time, filter_response=args.decimate_filter,
@@ -479,9 +492,9 @@ def run_hybrid_staircase(sequencer, pstat, args, file_suffix,
                          jv_data=None):
     print('Running HYBRID staircase')
 
-    if sequencer.mode != 'galv':
-        raise ValueError("run_hybrid_staircase expects a sequencer with mode = 'galv';"
-                         f" received sequencer with mode {sequencer.mode}")
+    if sequencer.chrono_mode != 'galv':
+        raise ValueError("run_hybrid_staircase expects a sequencer with chrono_mode = 'galv';"
+                         f" received sequencer with mode {sequencer.chrono_mode}")
 
     # Check staircase direction
     direction_options = ['both', 'charge', 'discharge']
