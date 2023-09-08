@@ -438,7 +438,7 @@ class HybridSequencer:
 
                     # TODO: remove when done testing
                     # Write a separate file with the filtered data
-                    if filter_response:
+                    if filter_response and decimate:
                         self.dt_chrono.filter_response = True
                         self.dt_chrono.result_file = chrono_file.replace('.DTA', '_Filtered.DTA')
                         self.dt_chrono.kst_file = None
@@ -539,7 +539,7 @@ class HybridSequencer:
                                        filter_response=False)
 
                     # TODO: remove when done testing
-                    if filter_response:
+                    if filter_response and decimate:
                         self.dt_chrono.filter_response = True
                         self.dt_chrono.result_file = chrono_file_pre.replace('.DTA', '_Filtered.DTA')
                         self.dt_chrono.kst_file = None

@@ -6,9 +6,11 @@ from scipy.ndimage import median_filter, gaussian_filter1d
 from .dtaq import DtaqPstatic, DtaqGstatic
 
 
-def signal_is_stable(times, values, slope_thresh, filter_values=True):
+def signal_is_stable(times, values, slope_thresh, filter_values=True, filter_func=None):
     if filter_values:
-        values = gaussian_filter1d(median_filter(values, 5), 1)
+        if filter_func is None:
+            filter_func = lambda x: gaussian_filter1d(median_filter(x, 5), 1)
+        values = filter_func(values)
 
     # Get slope
     fit = np.polyfit(times, values, deg=1)
@@ -24,7 +26,9 @@ def signal_is_stable(times, values, slope_thresh, filter_values=True):
 
 class EquilWrapper(object):
     def __init__(self, equil_window_seconds, slope_thresh,
-                 breakin_window_seconds=2, min_wait_time_minutes=None, **init_kw):
+                 breakin_window_seconds=2, min_wait_time_minutes=None, 
+                 filter_func=None,
+                 **init_kw):
         self.is_equilibrated = None
         self.equil_window_seconds = equil_window_seconds
         self.equil_window_points = None
@@ -32,6 +36,8 @@ class EquilWrapper(object):
         self.breakin_window_seconds = breakin_window_seconds
         self.breakin_window_points = None
         self.equil_status_history = None
+        
+        self.filter_func = filter_func
 
         if min_wait_time_minutes is None:
             min_wait_time_minutes = 0
@@ -51,7 +57,7 @@ class EquilWrapper(object):
 
                 # Get slope in % per minute
                 # If slope is below threshold, sample is equilibrated
-                status = signal_is_stable(t_window, s_window, self.slope_thresh)
+                status = signal_is_stable(t_window, s_window, self.slope_thresh, filter_func=self.filter_func)
 
         return status
 
@@ -123,7 +129,7 @@ class DtaqPstaticEquil(EquilWrapper, DtaqPstatic):
         return t_norm, i_norm
 
     def run(self, pstat, v_equil, duration, t_sample, max_iter=1, require_consecutive_statuses=10, **kw):
-        super().run(pstat, v_equil, duration, t_sample, max_iter=max_iter,
+        return super().run(pstat, v_equil, duration, t_sample, max_iter=max_iter,
                     require_consecutive_statuses=require_consecutive_statuses,
                     **kw)
 
@@ -145,7 +151,7 @@ class DtaqGstaticEquil(EquilWrapper, DtaqGstatic):
         return t_norm, v_norm
 
     def run(self, pstat, i_equil, duration, t_sample, max_iter=1, require_consecutive_statuses=10, **kw):
-        super().run(pstat, i_equil, duration, t_sample, max_iter=max_iter,
+        return super().run(pstat, i_equil, duration, t_sample, max_iter=max_iter,
                     require_consecutive_statuses=require_consecutive_statuses,
                     **kw)
 

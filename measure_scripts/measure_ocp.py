@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     # Configure OCV
     # Write to file point-by-point
-    ocv = DtaqOcv(write_mode='interval', write_interval=1)
+    ocv = DtaqOcv(write_mode='interval', write_interval=1, exp_notes=args.exp_notes)
 
     for n in range(args.num_loops):
         print(f'Beginning cycle {n}\n-----------------------------')

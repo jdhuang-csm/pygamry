@@ -17,7 +17,7 @@ from .filters import filter_chrono_signal
 GamryCOM = client.GetModule(['{BD962F0D-A990-4823-9CF5-284D1CDD9C6D}', 1, 0])
 
 
-def get_pstat(family='Interface', retry=5):
+def get_pstat(family='Interface', retry=5, device_index=0):
     """
     Get potentiostat
     :param str family: potentiostat family. Options: 'Interface', 'Reference'
@@ -30,15 +30,15 @@ def get_pstat(family='Interface', retry=5):
             devices = client.CreateObject('GamryCOM.GamryDeviceList')
             print(devices.EnumSections())
 
-            if family == 'Interface':
+            if family.lower() == 'interface':
                 obj_string = 'GamryCOM.GamryPC6Pstat'
-            elif family == 'Reference':
+            elif family.lower() == 'reference':
                 obj_string = 'GamryCOM.GamryPC5Pstat'
             else:
                 raise ValueError(f'Invalid family argument {family}')
 
             pstat = client.CreateObject(obj_string)
-            pstat.Init(devices.EnumSections()[0])
+            pstat.Init(devices.EnumSections()[device_index])
             return pstat
         except Exception as err:
             pstat = None
@@ -724,7 +724,7 @@ class GamryDtaqEventSink(object):
             df = df.set_index(df.index + self.start_index_from)
             if 'Time' in df.columns:
                 df['Time'] = df['Time'] + self.file_time_offset
-        data_string = df.to_csv(None, sep='\t', header=False, line_terminator='\n',
+        data_string = df.to_csv(None, sep='\t', header=False, lineterminator='\n',
                                 float_format=f'%.{self.write_precision + 1}g')
 
         # Pad left with tabs
@@ -740,7 +740,7 @@ class GamryDtaqEventSink(object):
     #         # Apply offsets
     #         df = df.set_index(df.index + self.start_index_from)
     #         df['Time'] = df['Time'] + self.file_time_offset
-    #     data_string = df.to_csv(None, sep='\t', header=False, line_terminator='\n',
+    #     data_string = df.to_csv(None, sep='\t', header=False, lineterminator='\n',
     #                             float_format=f'%.{self.write_precision + 1}g')
     #
     #     return data_string
@@ -1478,32 +1478,43 @@ class DtaqChrono(GamryDtaqEventSink):
         if self.i_max is not None:
             # Set IERange based on expected max current
             ie_range = self.pstat.TestIERange(self.i_max)
-            # Must set voltage to obtain initial requested current based on IERange
-            ie_resistor = self.pstat.IEResistor(ie_range)
-            s_init = self.signal_params['s_init']
-            v_init = s_init * ie_resistor
             self.pstat.SetIERange(ie_range)
-            # self.pstat.SetIchRange(ie_range)
-            self.pstat.SetVoltage(v_init)
-            self.pstat.SetIERangeMode(False)  # Fixed current range
+            # Fixed current range
+            self.pstat.SetIERangeMode(False)  
+            
+            if self.mode == 'galv':
+                # Must set voltage to obtain initial requested current based on IERange
+                ie_resistor = self.pstat.IEResistor(ie_range)
+                s_init = self.signal_params['s_init']
+                v_init = s_init * ie_resistor
+                # self.pstat.SetIchRange(ie_range)
+                self.pstat.SetVoltage(v_init)
             print(f'Chrono IERange: {ie_range}')
+        else:
+            # Set to auto-range
+            self.pstat.SetIERangeMode(True)
 
         # Measure OCV with cell off
+        self.v_oc = 0
         if self.start_with_cell_off:
             if self.mode == 'pot':
                 self.v_oc = self.pstat.MeasureV()
                 self.pstat.SetVoltage(self.v_oc)  # Set voltage to OCV
             else:
-                self.pstat.SetVoltage(0)  # Set voltage to 0
-        else:
-            self.v_oc = 0
+                self.pstat.SetVoltage(0)  # Set voltage to 0, corresponding to zero current:
 
         # Turn cell on
         self.pstat.SetCell(GamryCOM.CellOn)
 
-        # Find Vch range
-        print('Finding Vch range...')
-        self.pstat.FindVchRange()
+        if self.mode == 'galv':
+            # Find Vch range
+            print('Finding Vch range...')
+            self.pstat.FindVchRange()
+
+            # If lowest voltage range is selected, increment by 1 to prevent voltage truncation
+            if self.pstat.VchRange() == 0:
+                self.pstat.SetVchRange(1)
+            print('Vch range:', self.pstat.VchRange())
 
     def configure_mstep_signal(self, s_init, s_stepsize, t_init, t_step, t_sample, n_steps):
         # Regular step seems to be broken - use Mstep as workaround
@@ -1837,7 +1848,7 @@ class DtaqChrono(GamryDtaqEventSink):
                 df = df.set_index(df.index + self.start_index_from)
                 df['Time'] += self.file_time_offset
 
-            data_string = df.to_csv(None, sep='\t', header=False, line_terminator='\n',
+            data_string = df.to_csv(None, sep='\t', header=False, lineterminator='\n',
                                     float_format=f'%.{self.write_precision + 1}g')
 
             # Pad left with tabs
@@ -1911,7 +1922,30 @@ class DtaqChrono(GamryDtaqEventSink):
             return self.data_array[:, self.cook_columns.index(name)]
         except ValueError:
             raise ValueError(f'Invalid value name {name}. Must be one of dtaq cook columns')
-
+        
+    def _get_step_end_vals(self, name, window):
+        times = self._get_cook_values('Time')
+        y = self._get_cook_values(name)
+        step_y = []
+        
+        start_time = times[0]
+        for end_time in np.concatenate([self.get_step_times(), [times[-1] + 1e-10]]):
+            if window is None:
+                # Take the last 5% of the step duration
+                step_duration = end_time - start_time
+                window_index = np.where((times >= start_time + step_duration * 0.95) & (times < end_time))
+                if len(window_index[0]) == 0:
+                    window_index = np.where(times < end_time)[0][-1]
+                # print(f'window length: {len(window_index[0])}')
+                step_y.append(np.median(y[window_index]))
+            else:
+                # Take the last <window> points of each step
+                step_index = np.where((times >= start_time) & (times < end_time))
+                step_y.append(np.median(y[step_index][-window:]))
+            start_time = end_time
+            
+        return step_y
+            
     def _get_val_init(self, name, window):
         y = self._get_cook_values(name)
 
@@ -1964,6 +1998,12 @@ class DtaqChrono(GamryDtaqEventSink):
 
     def get_i_final(self, window=None):
         return self._get_val_final('Im', window)
+    
+    def get_i_step_end(self, window=None):
+        return self._get_step_end_vals('Im', window)
+    
+    def get_v_step_end(self, window=None):
+        return self._get_step_end_vals('Vf', window)
 
 
 # =========================================================
@@ -2050,7 +2090,7 @@ class DtaqReadZ(GamryDtaqEventSink):
         # Manually set status to retry
         retry_reasons = {
             'ReadZSpeedFast': [],
-            'ReadZSpeedNorm': ['Invalid Eis Result thought to be good.'],
+            'ReadZSpeedNorm': [],
             'ReadZSpeedLow': ['Invalid Eis Result thought to be good.', 'Cycle Limit.']
         }
         if self.gc_readzstatus == GamryCOM.ReadZStatusOk and \

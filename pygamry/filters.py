@@ -1,8 +1,8 @@
 import numpy as np
-from scipy import ndimage
+from scipy import ndimage, fft
 
 from ._filters import empty_gaussian_filter1d
-from .utils import identify_steps, split_steps, robust_std, pdf_normal, identify_extreme_values
+from .utils import identify_steps, split_steps, robust_std, pdf_normal, identify_extreme_values, nearest_index
 
 
 def masked_filter(a, mask, filter_func=None, **filter_kw):
@@ -156,7 +156,7 @@ def nonuniform_gaussian_filter1d(a, sigma, axis=-1, empty=False,
         return a
 
 
-# Chrono filtering
+# Chrono antialiasing filter
 # ------------------------
 def filter_chrono_signal(times, y, step_index=None, input_signal=None, decimate_index=None,
                          sigma_factor=0.01, max_sigma=None,
@@ -272,3 +272,19 @@ def outlier_prob(x, mu_in, sigma_in, sigma_out, p_prior):
     # Don't consider data points with smaller deviations than sigma_in to be outliers
     p_out[dev <= sigma_in] = 0
     return p_out
+
+
+# Fourier filter
+# --------------
+def fourier_band_filter(x, dt, f_min, f_max):
+    # FFT
+    x_fft = fft.rfft(x)
+    f_fft = fft.rfftfreq(len(x), d=dt)
+
+    # Set coef in band to zero
+    start = nearest_index(f_fft, f_min)
+    end = nearest_index(f_fft, f_max)
+    x_fft[start:end] = 0
+    
+    # Invert FFT
+    return fft.irfft(x_fft)

@@ -71,7 +71,7 @@ chrono_decimate_args = {
     '--decimate_during': dict(type=str, default='write'),
     '--decimation_prestep_points': dict(type=int, default=20),
     '--decimation_interval': dict(type=int, default=30),
-    '--decimation_factor': dict(type=int, default=2),
+    '--decimation_factor': dict(type=float, default=2),
     '--decimation_max_t_sample': dict(type=float, default=0.05),
     '--decimate_filter': dict(default=False, action='store_true')
 }

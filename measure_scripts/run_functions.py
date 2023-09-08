@@ -8,6 +8,7 @@ import pandas as pd
 from pygamry.dtaq import DtaqChrono, DtaqOcv, GamryCOM, DtaqGstatic, DtaqPstatic
 from pygamry.equilibration import DtaqPstaticEquil, DtaqGstaticEquil
 from pygamry.file_utils import read_curve_data
+from pygamry.utils import get_eis_frequencies
 
 
 def run_ocv(dtaq, pstat, args, file_suffix, show_plot=False):
@@ -24,13 +25,6 @@ def run_ocv(dtaq, pstat, args, file_suffix, show_plot=False):
 
     if show_plot:
         plt.close()
-
-
-def get_eis_frequencies(max_freq, min_freq, ppd):
-    num_decades = np.log10(max_freq) - np.log10(min_freq)
-    num_freq = int(ppd * num_decades) + 1
-    eis_freq = np.logspace(np.log10(max_freq), np.log10(min_freq), num_freq)
-    return eis_freq
 
 
 def run_eis(dtaq, pstat, args, file_suffix, V_oc=None, show_plot=False):

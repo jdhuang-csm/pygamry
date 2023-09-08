@@ -3,6 +3,7 @@ import time
 import os
 import numpy as np
 import pandas as pd
+import warnings
 
 from .utils import time_format_code
 
@@ -108,6 +109,23 @@ def get_decimation_index(times, step_times, t_sample, prestep_points, decimation
     decimate_index = np.unique(np.concatenate(keep_indices))
 
     return decimate_index
+
+
+def select_decimation_interval(times, step_times, t_sample, prestep_points, decimation_factor, max_t_sample,
+                               target_size):
+    intervals = np.logspace(np.log10(2), np.log10(1000), 12).astype(int)
+    sizes = [len(get_decimation_index(times, step_times, t_sample, prestep_points,
+                                      interval, decimation_factor, max_t_sample)
+                 )
+             for interval in intervals]
+    if target_size > sizes[-1]:
+        warnings.warn(f'Cannot achieve target size of {target_size} with selected decimation factor of '
+                      f'{decimation_factor}. Decrease the decimation factor and/or decrease the maximum period')
+    if target_size < sizes[0]:
+        warnings.warn(f'Cannot achieve target size of {target_size} with selected decimation factor of '
+                      f'{decimation_factor}. Increase the decimation factor and/or increase the maximum period'
+                      )
+    return int(np.interp(target_size, sizes, intervals))
 
 
 def read_curve_data(file):

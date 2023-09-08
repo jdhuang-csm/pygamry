@@ -79,6 +79,44 @@ def rel_round(x, precision):
             return x
     else:
         return x
+    
+
+def nearest_index(x_array, x_val, constraint=None):
+    """
+    Get index of x_array corresponding to value closest to x_val
+    :param ndarray x_array: Array to index
+    :param float x_val: Value to match
+    :param int constraint: If -1, find the nearest index for which x_array <= x_val. If 1, find the nearest index for
+    which x_array >= x_val. If None, find the closest index regardless of direction
+    :return:
+    """
+    if constraint is None:
+        def func(arr, x):
+            return np.abs(arr - x)
+    elif constraint in [-1, 1]:
+        def func(arr, x):
+            out = np.zeros_like(arr) + np.inf
+            constraint_index = constraint * arr >= constraint * x
+            out[constraint_index] = constraint * (arr - x)[constraint_index]
+            return out
+    else:
+        raise ValueError(f'Invalid constraint argument {constraint}. Options: None, -1, 1')
+
+    obj_func = func(x_array, x_val)
+    index = np.argmin(obj_func)
+
+    # Validate index
+    if obj_func[index] == np.inf:
+        if constraint == -1:
+            min_val = np.min(x_array)
+            raise ValueError(f'No index satisfying {constraint} constraint: minimum array value {min_val} '
+                             f'exceeds target value {x_val}')
+        else:
+            max_val = np.max(x_array)
+            raise ValueError(f'No index satisfying {constraint} constraint: maximum array value {max_val} '
+                             f'is less than target value {x_val}')
+
+    return index
 
 
 # Error handling
@@ -109,8 +147,15 @@ def check_control_mode(control_mode):
         raise ValueError(f'Invalid write_mode {control_mode}. Options: {options}')
 
 
-# Data processing
-# ----------------
+# Data processing and prep
+# -------------------------
+def get_eis_frequencies(max_freq, min_freq, ppd):
+    num_decades = np.log10(max_freq) - np.log10(min_freq)
+    num_freq = int(ppd * num_decades) + 1
+    eis_freq = np.logspace(np.log10(max_freq), np.log10(min_freq), num_freq)
+    return eis_freq
+
+
 def identify_steps(y, allow_consecutive=True, rthresh=50):
     """
     Identify steps in signal
