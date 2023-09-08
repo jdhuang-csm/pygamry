@@ -1,75 +1,10 @@
 import numpy as np
-from scipy import ndimage, fft
+from scipy import ndimage
 
-from ._filters import empty_gaussian_filter1d
-from .utils import identify_steps, split_steps, robust_std, pdf_normal, identify_extreme_values, nearest_index
-
-
-def masked_filter(a, mask, filter_func=None, **filter_kw):
-    """
-    Perform a masked/normalized filter operation on a. Only valid for linear filters
-    :param ndarray a: array to filter
-    :param ndarray mask: mask array indicating weight of each pixel in x_in; must match shape of x_in
-    :param filter_func: filter function to apply. Defaults to gaussian_filter
-    :param filter_kw: keyword args to pass to filter_func
-    :return:
-    """
-    if filter_kw is None:
-        if filter_func is None:
-            sigma = np.ones(np.ndim(a))
-            sigma[-1] = 0
-            filter_kw = {'sigma': sigma}
-        else:
-            filter_kw = None
-    if filter_func is None:
-        filter_func = ndimage.gaussian_filter
-
-    x_filt = filter_func(a * mask, **filter_kw)
-    mask_filt = filter_func(mask, **filter_kw)
-
-    return x_filt / mask_filt
+from pygamry.filters._filters import empty_gaussian_filter1d
+from pygamry.utils import identify_steps, split_steps, robust_std, pdf_normal
 
 
-def rms_filter(a, size, empty=False, **kw):
-    # Get mean of squared deviations
-    a2 = a ** 2
-    a2_mean = ndimage.uniform_filter(a2, size, **kw)
-
-    if empty:
-        # Determine kernel volume
-        if np.isscalar(size):
-            ndim = np.ndim(a)
-            n = size ** ndim
-        else:
-            n = np.prod(size)
-        a2_mean -= a2 / n
-        a2_mean *= n / (n - 1)
-
-    # Small negatives may arise due to precision loss
-    a2_mean[a2_mean < 0] = 0
-
-    return a2_mean ** 0.5
-
-
-def std_filter(a, size, mask=None, **kw):
-    if mask is None:
-        a_mean = ndimage.uniform_filter(a, size, **kw)
-        var = ndimage.uniform_filter((a - a_mean) ** 2, size, **kw)
-    else:
-        a_mean = masked_filter(a, mask, ndimage.uniform_filter, size=size, **kw)
-        var = masked_filter((a - a_mean) ** 2, mask, ndimage.uniform_filter, size=size, **kw)
-
-    return var ** 0.5
-
-
-def iqr_filter(a, size, **kw):
-    q1 = ndimage.percentile_filter(a, 25, size=size, **kw)
-    q3 = ndimage.percentile_filter(a, 75, size=size, **kw)
-    return q3 - q1
-
-
-# Nonuniform gaussian
-# -------------------
 def nonuniform_gaussian_filter1d(a, sigma, axis=-1, empty=False,
                                  mode='reflect', cval=0.0, truncate=4, sigma_node_factor=1.5, min_sigma=0.25):
     if np.max(sigma) > 0:
@@ -156,8 +91,6 @@ def nonuniform_gaussian_filter1d(a, sigma, axis=-1, empty=False,
         return a
 
 
-# Chrono antialiasing filter
-# ------------------------
 def filter_chrono_signal(times, y, step_index=None, input_signal=None, decimate_index=None,
                          sigma_factor=0.01, max_sigma=None,
                          remove_outliers=False, outlier_kw=None, median_prefilter=False, **kw):
@@ -272,19 +205,3 @@ def outlier_prob(x, mu_in, sigma_in, sigma_out, p_prior):
     # Don't consider data points with smaller deviations than sigma_in to be outliers
     p_out[dev <= sigma_in] = 0
     return p_out
-
-
-# Fourier filter
-# --------------
-def fourier_band_filter(x, dt, f_min, f_max):
-    # FFT
-    x_fft = fft.rfft(x)
-    f_fft = fft.rfftfreq(len(x), d=dt)
-
-    # Set coef in band to zero
-    start = nearest_index(f_fft, f_min)
-    end = nearest_index(f_fft, f_max)
-    x_fft[start:end] = 0
-    
-    # Invert FFT
-    return fft.irfft(x_fft)
