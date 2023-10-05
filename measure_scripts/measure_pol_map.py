@@ -6,6 +6,7 @@ import time
 # from copy import deepcopy
 import arg_config as argc
 import run_functions as rf
+import pandas as pd
 
 from pygamry.dtaq import get_pstat, DtaqOcv, DtaqChrono
 from pygamry.sequencers import HybridSequencer
@@ -25,7 +26,10 @@ argc.add_args_from_dict(
         '--vsweep_t_init': dict(type=float, default=1),
         '--vsweep_t_sample': dict(type=float, default=5e-3),
         '--vsweep_t_step': dict(type=float, default=5),
-        '--vsweep_ocv_equil': dict(default=False, action='store_true')
+        '--vsweep_ocv_equil': dict(default=False, action='store_true'),
+        '--vsweep_i_max': dict(type=float, default=1.0),
+        '--vsweep_file': dict(type=str, default='none'),
+        '--min_i_step': dict(type=float, default=-1)
     }
 )
 
@@ -79,7 +83,9 @@ if __name__ == '__main__':
 
         # Run chronoamperometry
         # ------------------------
-        if not args.disable_vsweep:
+        if args.vsweep_file != 'none':
+            iv_df = pd.read_csv(args.vsweep_file, sep='\t')
+        elif not args.disable_vsweep:
             iv_df = rf.run_v_sweep(chrono, pstat, args, suffix, V_oc=V_oc)
         else:
             iv_df = None
@@ -95,7 +101,14 @@ if __name__ == '__main__':
         v_sort = iv_df['Vf'].values[sort_index]
         # Enforce a minimum current step
         i_diff = np.diff(i_sort)
-        min_i_step = 0.001
+        if args.min_i_step == -1:
+            # Use robust outlier thresh to set min step
+            # min_i_step = 0.001
+            iqr = np.percentile(i_diff, 75) - np.percentile(i_diff, 25)
+            min_i_step = np.percentile(i_diff, 25) - 1.5 * iqr
+        else:
+            min_i_step = args.min_i_step
+        print('min_i_step: {:.2e} A'.format(min_i_step))
         i_diff[i_diff < min_i_step] = min_i_step
         cumsum = np.cumsum(i_diff)
         cumsum = np.insert(cumsum, 0, 0)
