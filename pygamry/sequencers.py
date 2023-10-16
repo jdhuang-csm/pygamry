@@ -697,8 +697,9 @@ class HybridSequencer:
                 pstat.Close()
         except Exception as e:
             # If any exception thrown, turn cell off and close pstat
-            pstat.SetCell(GamryCOM.CellOff)
-            pstat.Close()
+            if pstat.TestIsOpen():
+                pstat.SetCell(GamryCOM.CellOff)
+                pstat.Close()
             raise gamry_error_decoder(e)
 
     def run_staircase(self, pstat, decimate=True, eis_first=True, data_path=None, kst_path=None, file_suffix='',
