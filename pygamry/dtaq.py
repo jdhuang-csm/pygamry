@@ -2301,8 +2301,8 @@ class DtaqReadZ(GamryDtaqEventSink):
         if self.mode == 'galv':
             self.pstat.SetCASpeed(3)  # Switched from 2 to 3 as recommended by Abe Krebs 1/30/23
             self.dtaq.SetIdc(self.dc_amp_req)
-            print('dc_amp_req: {:.6f} A'.format(self.dc_amp_req))
-            print('ac_amp_req: {:.6f} A'.format(self.ac_amp_req))
+            print('dc_amp_req: {:.2e} A'.format(self.dc_amp_req))
+            print('ac_amp_req: {:.2e} A'.format(self.ac_amp_req))
             # print('Idc:', self.dtaq.Idc())
 
             # Set IERange
@@ -2337,8 +2337,8 @@ class DtaqReadZ(GamryDtaqEventSink):
             # print('Measured v:', self.pstat.MeasureV())
             # self.pstat.SetVoltage(self.pstat.MeasureV())
         elif self.mode == 'pot':
-            print('dc_amp_req: {:.6f} V'.format(self.dc_amp_req))
-            print('ac_amp_req: {:.6f} V'.format(self.ac_amp_req))
+            print('dc_amp_req: {:.2e} V'.format(self.dc_amp_req))
+            print('ac_amp_req: {:.2e} V'.format(self.ac_amp_req))
 
             self.pstat.SetCASpeed(3)  # MedFast
             self.pstat.SetVoltage(self.dc_amp_req)  # Set DC voltage
