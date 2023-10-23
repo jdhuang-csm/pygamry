@@ -32,7 +32,8 @@ if __name__ == '__main__':
 
     # Configure EIS
     # Write continuously
-    eis = DtaqReadZ(mode=args.eis_mode, readzspeed='ReadZSpeedNorm', write_mode='interval', write_interval=1,
+    eis = DtaqReadZ(mode=args.eis_mode, readzspeed='ReadZSpeedNorm',
+                    write_mode='interval', write_interval=1,
                     exp_notes=args.exp_notes)
 
     for n in range(args.num_loops):
