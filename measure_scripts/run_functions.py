@@ -318,7 +318,7 @@ def run_v_sweep(dtaq, pstat, args, file_suffix, V_oc):
 
         print(f'Running voltage sweep in {direction} direction...')
         dtaq.run(pstat, result_file=result_file, kst_file=kst_file,
-                 decimate=decimate, show_plot=False, repeats=1, append_to_file=append_to_file, i_max=1.0)
+                 decimate=decimate, show_plot=False, repeats=1, append_to_file=append_to_file, i_max=args.vsweep_i_max)
 
         # Retrieve step data
         # ------------------
@@ -343,6 +343,7 @@ def run_v_sweep(dtaq, pstat, args, file_suffix, V_oc):
 
         iv_data.append(step_iv)
 
+    # Write IV file with step-end data
     iv_data = np.concatenate(iv_data)
     iv_df = pd.DataFrame(iv_data, columns=['Im', 'Vf'])
     iv_df.to_csv(os.path.join(args.data_path, 'VSWEEPIV_{}.DTA'.format(file_suffix)), sep='\t', index_label='Pt')
@@ -583,7 +584,7 @@ def run_hybrid_staircase(sequencer, pstat, args, file_suffix,
 
         sequencer.run_staircase(pstat, decimate=decimate, data_path=args.data_path, kst_path=args.kst_path,
                                 file_suffix=suffix,
-                                equil_time=args.staircase_equil_time, rest_time=args.hybrid_rest_time,
+                                equil_time=0, rest_time=args.hybrid_rest_time,
                                 run_full_eis_pre=args.staircase_run_pre_eis,
                                 run_full_eis_post=args.staircase_run_post_eis,
                                 # run_full_eis_post=post_eis,

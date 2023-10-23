@@ -77,11 +77,16 @@ def get_decimation_index(times, step_times, t_sample, prestep_points, decimation
         undec_index = np.arange(start_index, min(start_index + decimation_interval + 1, next_step_index), dtype=int)
 
         keep_indices.append(undec_index)
-        sample_interval = 1
+        # sample_interval = 1
+        j = 1
         last_index = undec_index[-1]
         while last_index < next_step_index - 1:
+            # TODO: this would be cleaner if sample_interval were not cast as int,
+            #  and instead keep_index were converted to int.
+            #  However, this will require some care to ensure that we don't end up with 
+            #  undesired behavior due to rounding decimal arange (such as rounding up to interval_end_index)
             # Increment sample_interval
-            sample_interval = min(int(sample_interval * decimation_factor), max_sample_interval)
+            sample_interval = min(int(decimation_factor ** j), max_sample_interval)
 
             if sample_interval == max_sample_interval:
                 # Sample interval has reached maximum. Continue through end of step
@@ -105,6 +110,9 @@ def get_decimation_index(times, step_times, t_sample, prestep_points, decimation
 
             # Increment last_index
             last_index = keep_index[-1]
+            
+            # Increment decimation exponent
+            j += 1
 
     decimate_index = np.unique(np.concatenate(keep_indices))
 

@@ -180,5 +180,6 @@ vsweep_args = {
     '--vsweep_v_min': dict(type=float, default=0.4),
     '--vsweep_v_max': dict(type=float, default=1.5),
     '--vsweep_rest_time': dict(type=float, default=60),
-    '--vsweep_ocv_equil': dict(default=False, action='store_true')
+    '--vsweep_ocv_equil': dict(default=False, action='store_true'),
+    '--vsweep_i_max': dict(type=float, default=1.0)
 }

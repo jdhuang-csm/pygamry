@@ -318,7 +318,7 @@ class HybridSequencer:
 
             # Determine initial i_rms
             i_rms_init = self.get_next_i_rms(i_init, v_rms_target)
-            print('i_rms_init: {:.3f} mA'.format(1000 * i_rms_init))
+            print('i_rms_init: {:.2e} A'.format(i_rms_init))
 
             self.configure_staircase(i_init, i_rms_init, t_init, t_step, t_sample, frequencies,
                                      num_steps, v_limits=v_limits, step_type=step_type, v_rms_target=v_rms_target,
@@ -697,8 +697,9 @@ class HybridSequencer:
                 pstat.Close()
         except Exception as e:
             # If any exception thrown, turn cell off and close pstat
-            pstat.SetCell(GamryCOM.CellOff)
-            pstat.Close()
+            if pstat.TestIsOpen():
+                pstat.SetCell(GamryCOM.CellOff)
+                pstat.Close()
             raise gamry_error_decoder(e)
 
     def run_staircase(self, pstat, decimate=True, eis_first=True, data_path=None, kst_path=None, file_suffix='',
