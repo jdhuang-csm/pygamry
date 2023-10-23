@@ -2016,22 +2016,18 @@ class DtaqReadZ(GamryDtaqEventSink):
     EIS measurement procedure.
     """
 
-    def __init__(self, mode='galv', readzspeed='ReadZSpeedNorm', **init_kw):
+    def __init__(self, mode='galv', readzspeed='ReadZSpeedNorm', 
+                 ac_ierange: bool = None,
+                 **init_kw):
         # Set enums based on specified mode
         check_control_mode(mode)
+        
+        # Initialize user_ac_ierange as None prior to mode setting
+        self.user_ac_ierange = None
         self.mode = mode
-        if mode == 'galv':
-            self.gc_ctrlmode = 'GstatMode'
-            self.input_column = 'I'
-            self.response_column = 'V'
-            tag = 'GALVEIS'
-            test_id = 'Galvanostatic EIS'
-        else:
-            self.gc_ctrlmode = 'PstatMode'
-            self.input_column = 'V'
-            self.response_column = 'I'
-            tag = 'EISPOT'
-            test_id = 'Potentiostatic EIS'
+        
+        # Then set ac_ierange
+        self.ac_ierange = ac_ierange
 
         # Set ReadZ speed
         self.gc_readzspeed = readzspeed
@@ -2050,7 +2046,70 @@ class DtaqReadZ(GamryDtaqEventSink):
         self.z_data = None
         self.plot_type = None
 
-        super().__init__('GamryReadZ', tag, None, test_id=test_id, **init_kw)
+        super().__init__('GamryReadZ', self.tag, None, test_id=self.test_id, **init_kw)
+        
+    def set_mode(self, mode: str):
+        check_control_mode(mode)
+        self._mode = mode
+        
+        # Set dependent attributes
+        if mode == 'galv':
+            self.gc_ctrlmode = 'GstatMode'
+            self.input_column = 'I'
+            self.response_column = 'V'
+            self.tag = 'GALVEIS'
+            self.test_id = 'Galvanostatic EIS'
+        else:
+            self.gc_ctrlmode = 'PstatMode'
+            self.input_column = 'V'
+            self.response_column = 'I'
+            self.tag = 'EISPOT'
+            self.test_id = 'Potentiostatic EIS'
+            
+        # Check ac_ierange
+        rec_ac_ierange = (mode != 'galv')
+        
+        if self.user_ac_ierange is not None:
+            # If user specified value, don't overwrite it.
+            # Instead, check and raise warning if not recommended
+            if self.user_ac_ierange != rec_ac_ierange:
+                warnings.warn(f'For {mode} mode, the recommended value '
+                              f'of ac_ierange is {rec_ac_ierange}.')
+        else:
+            # No user-specified value. Set to recommended value
+            self.ac_ierange = rec_ac_ierange
+        
+        
+    def get_mode(self) -> str:
+        return self._mode
+    
+    mode = property(get_mode, set_mode)
+        
+    def set_ac_ierange(self, ac_ierange: bool | None):
+        # Store user-provided value
+        self.user_ac_ierange = ac_ierange
+        
+        # Get recommended value baed on mode
+        if self.mode == 'galv':
+            recommended = False
+        else:
+            recommended = True
+            
+        if ac_ierange is not None:
+            # Check the provided value and set
+            if ac_ierange != recommended:
+                warnings.warn(f'For {self.mode} mode, the recommended value '
+                              f'of ac_ierange is {recommended}.')
+            self._ac_ierange = ac_ierange
+        else:
+            # No value provided - use the recommended value
+            self._ac_ierange = recommended
+            
+    def get_ac_ierange(self) -> bool:
+        return self._ac_ierange
+    
+    ac_ierange = property(get_ac_ierange, set_ac_ierange)
+        
 
     # COM event handling
     # --------------------------
@@ -2068,24 +2127,49 @@ class DtaqReadZ(GamryDtaqEventSink):
 
         return tot_count
     
-    def update_ie_range(self, frequency: float, z_guess: float, v_dc_max: float = 3.0):
+    def set_ie_range(self, frequency: float, z_guess: float, s_dc_max: float = 1.0):
         # Get IE range
-        v_ac_max = self.ac_amp_req *  z_guess * 10
-        IERange = self.pstat.TestIERangeAC(self.ac_amp_req, v_ac_max, 
-                                           self.dc_amp_req, v_dc_max,
-                                           frequency)
-
-        # Get internal resistance
-        Rm = self.pstat.IEResistor(IERange)
-        # print('IERange, Rm:', IERange, Rm)
+        if self.ac_ierange:
+            # "Correct" way: need to account for frequency to select IERange.
+            # Seems to yield worse results than using DC IERange for galv measurements.
+            # Args to TestIERangeAC are: i_ac_max, v_ac_max, i_dc_max, v_dc_max, freq
+            
+            if self.mode == 'galv':
+                v_ac_max = self.ac_amp_req *  z_guess * 2
+                IERange = self.pstat.TestIERangeAC(self.ac_amp_req, v_ac_max, 
+                                                self.dc_amp_req, s_dc_max,
+                                                frequency)
+            else:
+                i_ac_max = 2 * self.ac_amp_req / z_guess
+                IERange = self.pstat.TestIERangeAC(i_ac_max, self.ac_amp_req,
+                                                   s_dc_max, self.dc_amp_req,
+                                                   frequency)
+        else:
+            # "Incorrect" way: just use DC IERange.
+            # Seems to work better for galv mode.
+            if self.mode == 'galv':
+                # Get max current amplitude with 5% buffer
+                i_max = 1.05 * (abs(self.dc_amp_req) + (2 ** 0.5) * abs(self.ac_amp_req))  
+            else:
+                # Estimate (very roughly) max current
+                i_max = 2 * (abs(self.dc_amp_req) + (2 ** 0.5) * self.ac_amp_req) / self.z_guess
+                
+            IERange = self.pstat.TestIERange(i_max)
         
-        # Get internal voltage amplitude to produce requested current
-        Sdc = Rm * self.dc_amp_req  
-        # print('Sdc (internal): {:.3e} V'.format(Sdc))
-
-        # Set IERange and internal voltage
+        # Set IERange
         self.pstat.SetIERange(IERange)
-        self.pstat.SetVoltage(Sdc)
+
+        if self.mode == 'galv':
+            # In galv mode, we need to set the internal voltage to the correct value
+            # to produce the requested DC current
+            # Get internal resistance
+            Rm = self.pstat.IEResistor(IERange)
+            
+            # Get internal voltage amplitude to produce requested current
+            v_dc_internal = Rm * self.dc_amp_req  
+
+            # Set IERange and internal voltage
+            self.pstat.SetVoltage(v_dc_internal)
         
 
     def _IGamryReadZEvents_OnDataAvailable(self, this):
@@ -2226,23 +2310,10 @@ class DtaqReadZ(GamryDtaqEventSink):
                 # Close handle to terminate PumpEvents
                 self.close_connection()
             else:
-                # # TEST
-                # v_ac_max = self.ac_amp_req *  self.z_guess * 50
-                # v_dc_max = 3
-                # IERange = self.pstat.TestIERangeAC(self.ac_amp_req, v_ac_max, self.dc_amp_req, v_dc_max,
-                #                                 self.frequencies[self.frequency_index])
-
-                # Rm = self.pstat.IEResistor(IERange)
-                # print('IERange, Rm:', IERange, Rm)
-                # Sdc = Rm * self.dc_amp_req  # Voltage signal which generates I signal
-                # print('Sdc (internal): {:.3e} V'.format(Sdc))
-
-                # self.pstat.SetIERange(IERange)
-                # # Set voltage to generate requested DC current
-                # self.pstat.SetVoltage(Sdc)
-                
-                if self.mode == 'galv':
-                    # Update IERange for galv measurements
+                if self.ac_ierange and self.mode == 'galv':
+                    # If running in galv mode and we want to use AC IERange,
+                    # need to update IERange based on frequency.
+                    # In pot mode, IERange is updated automatically by the pstat.
                     # Get estimated z modulus
                     z_guess = self.z_guess
                     if self.frequency_index > 0:
@@ -2253,9 +2324,7 @@ class DtaqReadZ(GamryDtaqEventSink):
                                                 self.zdata_columns.index('Zmod')]
                             
                     # Update IE range    
-                    self.update_ie_range(self.frequencies[self.frequency_index],
-                                        z_guess
-                                        )
+                    self.set_ie_range(self.frequencies[self.frequency_index], z_guess)
                 
                 
                 # Measure next point
@@ -2364,16 +2433,16 @@ class DtaqReadZ(GamryDtaqEventSink):
             # print('Idc:', self.dtaq.Idc())
 
             # Set IERange
-            i_max = 1.05 * (abs(self.dc_amp_req) + (2 ** 0.5) * abs(self.ac_amp_req))  # 5% buffer
-            print('Max current:', i_max)
-            # Old code: DC
+            # i_max = 1.05 * (abs(self.dc_amp_req) + (2 ** 0.5) * abs(self.ac_amp_req))  # 5% buffer
+            # print('Max current:', i_max)
+            # # Old code: DC
             # IERange = self.pstat.TestIERange(i_max)  # Max current
 
             # # New code: AC
-            # v_ac_max = self.ac_amp_req *  self.z_guess * 50
-            # v_dc_max = 3
-            # IERange = self.pstat.TestIERangeAC(self.ac_amp_req, v_ac_max, self.dc_amp_req, v_dc_max,
-            #                                    self.frequencies[0])
+            # # v_ac_max = self.ac_amp_req *  self.z_guess * 50
+            # # v_dc_max = 3
+            # # IERange = self.pstat.TestIERangeAC(self.ac_amp_req, v_ac_max, self.dc_amp_req, v_dc_max,
+            # #                                    self.frequencies[0])
 
             # Rm = self.pstat.IEResistor(IERange)
             # print('IERange, Rm:', IERange, Rm)
@@ -2384,7 +2453,7 @@ class DtaqReadZ(GamryDtaqEventSink):
             # # Set voltage to generate requested DC current
             # self.pstat.SetVoltage(Sdc)
             
-            self.update_ie_range(self.frequencies[0], self.z_guess)
+            self.set_ie_range(self.frequencies[0], self.z_guess)
 
             # find the DC Voltage for VGS
             print("Finding Vch Range...")
@@ -2404,9 +2473,10 @@ class DtaqReadZ(GamryDtaqEventSink):
             self.pstat.SetVoltage(self.dc_amp_req)  # Set DC voltage
 
             # Estimate current range
-            IERange = self.pstat.TestIERange((abs(self.dc_amp_req) + (2 ** 0.5) * self.ac_amp_req) / self.z_guess)
-            print('IERange:', IERange)
-            self.pstat.SetIERange(IERange)
+            # IERange = self.pstat.TestIERange((abs(self.dc_amp_req) + (2 ** 0.5) * self.ac_amp_req) / self.z_guess)
+            # print('IERange:', IERange)
+            # self.pstat.SetIERange(IERange)
+            self.set_ie_range(self.frequencies[0], self.z_guess)
 
             if self.start_with_cell_off:
                 # Get DC current
