@@ -1,0 +1,10 @@
+name: gamry
+channels:
+  - conda-forge
+dependencies:
+  - matplotlib
+  - numpy
+  - pandas
+  - scipy
+  - comtypes
+  - ipykernel
