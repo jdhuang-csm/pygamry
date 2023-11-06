@@ -7,8 +7,7 @@ rf_dir = 'C:\\Users\\zmap\\python\\pygamry\\measure_scripts'
 if rf_dir not in sys.path:
     sys.path.append(rf_dir)
 
-from pygamry.dtaq import get_pstat, GamryCOM, DtaqChrono
-from pygamry.sequencers import HybridSequencer
+from pygamry.dtaq import get_pstat, GamryCOM, DtaqChrono, HybridSequencer
 
 import run_functions as rf
 import arg_config as argc

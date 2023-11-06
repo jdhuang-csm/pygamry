@@ -8,8 +8,7 @@ import arg_config as argc
 import run_functions as rf
 import pandas as pd
 
-from pygamry.dtaq import get_pstat, DtaqOcv, DtaqChrono
-from pygamry.sequencers import HybridSequencer
+from pygamry.dtaq import get_pstat, DtaqOcv, DtaqChrono, HybridSequencer
 
 # Define args
 parser = argparse.ArgumentParser(description='Run fast polarization map')

@@ -5,10 +5,13 @@ import pandas as pd
 import warnings
 from copy import deepcopy
 
-from .dtaq import DtaqChrono, DtaqReadZ, GamryCOM
-from .utils import gamry_error_decoder
-from .file_utils import read_curve_data
-from . import polarization as pol
+from .readz import DtaqReadZ
+from .chrono import DtaqChrono
+from .config import GamryCOM
+
+from ..utils import gamry_error_decoder
+from ..file_utils import read_curve_data
+from .. import polarization as pol
 
 
 # ====================================
@@ -27,7 +30,8 @@ class HybridSequencer:
         # Initialize dtaqs. Don't turn cell off - handle this within run
         self.dt_chrono = DtaqChrono(chrono_mode, write_mode='once', exp_notes=exp_notes,
                                     start_with_cell_off=False, leave_cell_on=True)
-        self.dt_eis = DtaqReadZ(eis_mode, write_mode='interval', write_interval=1, exp_notes=exp_notes,
+        self.dt_eis = DtaqReadZ(eis_mode, write_mode='interval', write_interval=1, 
+                                exp_notes=exp_notes,
                                 start_with_cell_off=False, leave_cell_on=True)  #, readzspeed='ReadZSpeedFast')
 
         self.dstep_args = None

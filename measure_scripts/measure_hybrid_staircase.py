@@ -3,8 +3,7 @@ import argparse
 import arg_config as argc
 import run_functions as rf
 
-from pygamry.dtaq import get_pstat, DtaqOcv
-from pygamry.sequencers import HybridSequencer
+from pygamry.dtaq import get_pstat, DtaqOcv, HybridSequencer
 
 # Define args
 parser = argparse.ArgumentParser(description='Run hybrid staircase')

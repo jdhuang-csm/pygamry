@@ -7,9 +7,10 @@ import argparse
 import time
 
 import arg_config as argc
+from pygamry.dtaq import DtaqReadZ
 import run_functions as rf
 
-from pygamry.dtaq import get_pstat, DtaqReadZ, DtaqOcv
+from pygamry.dtaq import get_pstat, DtaqOcv
 
 # Define args
 parser = argparse.ArgumentParser(description='Run OCP and EIS')

@@ -5,10 +5,10 @@ import argparse
 import time
 # from copy import deepcopy
 import arg_config as argc
+from pygamry.dtaq import DtaqReadZ
 import run_functions as rf
 
-from pygamry.dtaq import get_pstat, DtaqReadZ, DtaqOcv, DtaqPwrPol
-from pygamry.sequencers import HybridSequencer
+from pygamry.dtaq import get_pstat, DtaqOcv, DtaqPwrPol, HybridSequencer
 
 # Define args
 parser = argparse.ArgumentParser(description='Run OCP, EIS, jv, and staircase')
