@@ -32,13 +32,15 @@ def make_geostep_signal(s_init, s_final, s_min, s_max, t_init, t_sample, t_short
         raise ValueError(f's_max must be greater than s_min. Received s_min={s_min}, s_max={s_max}')
 
     if t_short >= t_long:
-        raise ValueError('t_short must be less than t_long')
+        raise ValueError('t_short must be less than t_long, but received t_short={:.3e} '
+                         'and t_long={:.3e}'.format(t_short, t_long))
 
     if t_short <= t_sample:
         raise ValueError('t_short must be greater than t_sample')
 
     if num_scales < 2:
-        raise ValueError(f'Geostep requires at least 2 duration scales (num_scales); received {num_scales}')
+        raise ValueError('Geostep requires at least 2 duration scales (num_scales); '
+                         f'received num_scales={num_scales}')
 
     if steps_per_scale < 1 or steps_per_scale > 3:
         raise ValueError(f'steps_per_scale must be between 1 and 3; received {steps_per_scale}')

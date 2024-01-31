@@ -1,7 +1,7 @@
 from .. import signals
 from .config import GamryCOM
 from .eventsink import GamryDtaqEventSink
-from ..utils import gamry_error_decoder, rel_round, check_control_mode
+from ..utils import gamry_error_decoder, rel_round, check_control_mode, identify_steps
 from ..file_utils import get_decimation_index
 from ..filters.antialiasing import filter_chrono_signal
 
@@ -143,6 +143,9 @@ class DtaqChrono(GamryDtaqEventSink):
     def configure_mstep_signal(self, s_init, s_stepsize, t_init, t_step, t_sample, n_steps):
         # Regular step seems to be broken - use Mstep as workaround
         self.signal = client.CreateObject('GamryCOM.GamrySignalMstep')
+        
+        # Round durations to sample interval
+        t_init, t_step = round_to_sample_interval(t_sample, [t_init, t_step])
 
         # Store signal args for later user - signal.Init cannot be called until pstat specified
         self.signal_args = [s_init, s_stepsize, t_init, t_step, n_steps, t_sample, getattr(GamryCOM, self.gc_ctrlmode)]
@@ -173,6 +176,9 @@ class DtaqChrono(GamryDtaqEventSink):
     def configure_dstep_signal(self, s_init, s_step1, s_step2, t_init, t_step1, t_step2, t_sample):
         self.signal = client.CreateObject('GamryCOM.GamrySignalDstep')
 
+        # Round durations to sample interval
+        t_init, t_step1, t_step2 = round_to_sample_interval(t_sample, [t_init, t_step1, t_step2])
+        
         # Store signal args for later user - signal.Init cannot be called until pstat specified
         self.signal_args = [s_init, t_init, s_step1, t_step1, s_step2, t_step2, t_sample,
                             getattr(GamryCOM, self.gc_ctrlmode)]
@@ -204,6 +210,9 @@ class DtaqChrono(GamryDtaqEventSink):
     def configure_triplestep_signal(self, s_init, s_rms, t_init, t_step, t_sample):
         self.signal = client.CreateObject('GamryCOM.GamrySignalArray')
 
+        # Round durations to sample interval
+        t_init, t_step = round_to_sample_interval(t_sample, [t_init, t_step])
+        
         # Build the signal array
         times, signal, step_times = signals.make_triplestep_signal(s_init, s_rms, t_init, t_step, t_sample)
 
@@ -235,6 +244,9 @@ class DtaqChrono(GamryDtaqEventSink):
     def configure_geostep_signal(self, s_init, s_final, s_min, s_max, t_init, t_sample, t_short, t_long,
                                num_scales, steps_per_scale, flex_thresh=0.05, end_at_init=False, end_time=None):
         self.signal = client.CreateObject('GamryCOM.GamrySignalArray')
+        
+        # Round durations to sample interval
+        t_init, t_short, t_long = round_to_sample_interval(t_sample, [t_init, t_short, t_long])
 
         # Build the signal array
         times, signal, step_times = signals.make_geostep_signal(s_init, s_final, s_min, s_max,
@@ -305,17 +317,36 @@ class DtaqChrono(GamryDtaqEventSink):
         elif decimate_during == 'write':
             self.decimate_args = [prestep_points, decimation_interval, decimation_factor, max_t_sample]
 
-    def get_step_times(self):
+    def get_step_times(self, include_erroneous: bool = True):
         """Determine step times from signal"""
         if self.signal_params['signal_class'] == 'Dstep':
-            step_times = np.array([0, self.signal_params['t_step1']])
+            # Step occurs 1 sample period AFTER programmed time
+            step_times = np.array([0, self.signal_params['t_step1']]) + 0.99 * self.signal_params['t_sample']
         elif self.signal_params['signal_class'] == 'Mstep':
             step_times = self.signal_params['t_init'] + \
                          np.arange(0, self.signal_params['n_steps']) * self.signal_params['t_step']
+            # # Step occurs 1 sample period AFTER programmed time (? need to check if also true for mstep)
+            # step_times += self.signal_params['t_sample']
         elif self.signal_params['signal_class'] == 'Array':
             step_times = self.signal_params['step_times']
         else:
             step_times = None
+            
+        if include_erroneous:
+            # Check for any erroneous (unprogrammed) steps 
+            # (these sometimes arise when configured current is very small)
+            meas_step_index = identify_steps(
+                self.data_array[:, self.cook_columns.index(self.input_column)], 
+                allow_consecutive=False
+            )
+            
+            meas_step_times = self.data_array[meas_step_index, self.cook_columns.index('Time')]
+            
+            if step_times is None:
+                step_times = []
+                
+            # Get the superset of programmed and erroneous steps
+            step_times = np.unique(np.concatenate([step_times, meas_step_times]))
 
         return step_times
 
@@ -329,7 +360,7 @@ class DtaqChrono(GamryDtaqEventSink):
             out[x >= x0] = x[x >= x0] - x0
             return out
 
-        return np.array([np.argmin(pos_delta(times, st)) for st in step_times])
+        return np.unique([np.argmin(pos_delta(times, st)) for st in step_times])
 
     def set_signal(self):
         try:
@@ -628,3 +659,8 @@ class DtaqChrono(GamryDtaqEventSink):
 
     def get_v_step_end(self, window=None):
         return self._get_step_end_vals('Vf', window)
+    
+    
+def round_to_sample_interval(t_sample, time_list):
+    return [round(t / t_sample, 0) * t_sample for t in time_list]
+        

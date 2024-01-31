@@ -420,7 +420,9 @@ class DtaqReadZ(GamryDtaqEventSink):
         else:
             self.pstat.SetIchOffsetEnable(False)
         # if self.dc_amp_req < 0:
-        # self.pstat.SetVchOffsetEnable(True)
+        
+        # This seems to be necessary at least in the case that mode='pot', v_dc < -0.024
+        self.pstat.SetVchOffsetEnable(True)
 
         # self.pstat.SetVchFilter(2.5)  # Causes "Invalid EIS result thought to be good" status at first frequency
         # self.pstat.SetAchRange(3.0)
