@@ -7,7 +7,7 @@ import time
 import arg_config as argc
 import run_functions as rf
 
-from pygamry.dtaq import get_pstat, DtaqReadZ, DtaqOcv, DtaqPwrPol, DtaqPstatic
+from pygamry.dtaq import get_pstat, DtaqOcv, DtaqPwrPol, DtaqPstatic, DtaqReadZ
 
 # Define args
 parser = argparse.ArgumentParser(description='Run potentiostatic stability test')

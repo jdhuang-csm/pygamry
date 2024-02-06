@@ -2,8 +2,9 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from pygamry.dtaq import DtaqReadZ
 
-from pygamry.dtaq import get_pstat, DtaqReadZ, DtaqOcv
+from pygamry.dtaq import get_pstat, DtaqOcv
 
 ocp_duration = 10
 ocp_sample_period = 1

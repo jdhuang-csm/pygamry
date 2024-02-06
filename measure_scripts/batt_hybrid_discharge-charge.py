@@ -5,8 +5,7 @@ import time
 import arg_config as argc
 import run_functions as rf
 
-from pygamry.dtaq import get_pstat, DtaqChrono, DtaqPstatic, GamryCOM
-from pygamry.sequencers import HybridSequencer
+from pygamry.dtaq import get_pstat, DtaqChrono, DtaqPstatic, GamryCOM, HybridSequencer
 
 # Define args
 parser = argparse.ArgumentParser(description='Charge/discharge at constant current while running hybrid measurements')

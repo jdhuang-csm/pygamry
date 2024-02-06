@@ -2,8 +2,7 @@ import time
 import numpy as np
 import os
 
-from pygamry.dtaq import get_pstat, DtaqOcv
-from pygamry.sequencers import HybridSequencer
+from pygamry.dtaq import get_pstat, DtaqOcv, HybridSequencer
 
 data_path = 'C:\\Users\\jdhuang\\Documents\\Gamry_data\\Batteries\\Molicel_M35A\\Cell1\\230406'
 # data_path = '..\\test_data'

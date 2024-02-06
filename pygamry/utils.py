@@ -144,7 +144,7 @@ def check_write_mode(write_mode):
 def check_control_mode(control_mode):
     options = ['galv', 'pot']
     if control_mode not in options:
-        raise ValueError(f'Invalid write_mode {control_mode}. Options: {options}')
+        raise ValueError(f'Invalid control_mode {control_mode}. Options: {options}')
 
 
 # Data processing and prep
@@ -173,10 +173,10 @@ def identify_steps(y, allow_consecutive=True, rthresh=50):
         idx_diff = np.diff(step_idx)
         # idx_diff = np.concatenate(([2], idx_diff))
         idx_diff = np.insert(idx_diff, 0, 2)
-        print(step_idx, idx_diff)
+        # print(step_idx, idx_diff)
         step_idx = step_idx[idx_diff > 1]
 
-    print('identify_steps step_idx:', step_idx)
+    # print('identify_steps step_idx:', step_idx)
 
     return step_idx
 

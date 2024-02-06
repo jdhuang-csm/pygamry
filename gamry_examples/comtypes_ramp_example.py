@@ -8,7 +8,7 @@ import comtypes
 import comtypes.client as client
 
 # Alternatively:
-#GamryCOM=client.GetModule(r'C:\Program Files\Gamry Instruments\Framework 6\GamryCOM.exe')
+GamryCOM=client.GetModule(r'C:\Program Files\Gamry Instruments\Framework 6\GamryCOM.exe')
 
 # utilities: #####################
 class GamryCOMError(Exception):

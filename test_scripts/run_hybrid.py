@@ -1,8 +1,7 @@
 import matplotlib as mpl
 import numpy as np
 import os
-from pygamry.dtaq import get_pstat, DtaqOcv
-from pygamry.sequencers import HybridSequencer
+from pygamry.dtaq import get_pstat, DtaqOcv, HybridSequencer
 
 mpl.use('TKAgg')
 

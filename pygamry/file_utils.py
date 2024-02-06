@@ -56,7 +56,7 @@ def get_decimation_index(times, step_times, t_sample, prestep_points, decimation
         out[x >= x0] = x[x >= x0] - x0
         return out
 
-    step_index = [np.argmin(pos_delta(times, st)) for st in step_times]
+    step_index = np.unique([np.argmin(pos_delta(times, st)) for st in step_times])
 
     # Limit sample interval to max_t_sample
     if max_t_sample is None:

@@ -7,7 +7,7 @@ import time
 import arg_config as argc
 import run_functions as rf
 
-from pygamry.dtaq import get_pstat, DtaqReadZ, DtaqPstatic
+from pygamry.dtaq import get_pstat, DtaqPstatic, DtaqReadZ
 
 # Define args
 parser = argparse.ArgumentParser(description='Run potentiostatic scan followed by EIS at bias')

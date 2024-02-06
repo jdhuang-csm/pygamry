@@ -4,8 +4,7 @@ import os
 import arg_config as argc
 import run_functions as rf
 
-from pygamry.dtaq import get_pstat, DtaqChrono
-from pygamry.sequencers import HybridSequencer
+from pygamry.dtaq import get_pstat, DtaqChrono, HybridSequencer
 
 # Define args
 parser = argparse.ArgumentParser(description='Run hybrid measurement')

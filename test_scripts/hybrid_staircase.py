@@ -3,9 +3,9 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib
+
 matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
-from sqeis import plotting as sqp
 
 from pygamry.dtaq import get_pstat, DtaqOcv, DtaqChrono, DtaqReadZ, GamryCOM
 from pygamry.file_utils import get_decimation_index
@@ -93,8 +93,8 @@ for i in range(n_steps):
 
 # Plot EIS data
 fig, axes = plt.subplots(1, 3, figsize=(9, 2.75))
-for df in eis_data:
-    sqp.plot_eis(df, axes=axes)
+# for df in eis_data:
+#     sqp.plot_eis(df, axes=axes)
 
 fig.tight_layout()
 
