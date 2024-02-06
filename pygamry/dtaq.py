@@ -6,6 +6,7 @@ import comtypes.client as client
 from comtypes.client._events import _handles_type, ctypes
 import gc
 import warnings
+from typing import Union
 
 from .file_utils import get_file_time, read_last_line, get_decimation_index
 from .utils import gamry_error_decoder, check_write_mode, check_control_mode, rel_round, time_format_code
@@ -2085,7 +2086,7 @@ class DtaqReadZ(GamryDtaqEventSink):
     
     mode = property(get_mode, set_mode)
         
-    def set_ac_ierange(self, ac_ierange: bool | None):
+    def set_ac_ierange(self, ac_ierange: Union[bool, None]):
         # Store user-provided value
         self.user_ac_ierange = ac_ierange
         
