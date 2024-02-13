@@ -101,11 +101,12 @@ class DtaqReadZ(GamryDtaqEventSink):
         # Store user-provided value
         self.user_ac_ierange = ac_ierange
 
-        # Get recommended value baed on mode
+        # Get recommended value based on mode
         if self.mode == 'galv':
             recommended = False
         else:
-            recommended = True
+            # In theory should be True, but works better with False
+            recommended = False
 
         if ac_ierange is not None:
             # Check the provided value and set
