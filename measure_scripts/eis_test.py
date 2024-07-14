@@ -25,7 +25,7 @@ ocv = DtaqOcv(write_mode='interval', write_interval=int(60 / ocp_sample_period))
 
 # Configure EIS
 # Write continuously
-eis = DtaqReadZ(mode='potentiostatic', readzspeed='ReadZSpeedNorm', write_mode='continuous')
+eis = DtaqReadZ(mode='pot', readzspeed='ReadZSpeedNorm', write_mode='continuous')
 
 
 # Run OCV
